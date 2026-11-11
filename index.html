@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>每日午晚餐 價錢・熱量・蛋白質計算機</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f5f1;--card:#fff;--ink:#22231f;--muted:#6f716a;--line:#e3e1da;
+  --accent:#2f7d5b;--accent-soft:#e3f1ea;--warn:#c0612b;--warn-soft:#fbeadf;--mid:#b8892b;--mid-soft:#f7efdc;
+  --radius:12px;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#171815;--card:#22231f;--ink:#ecebe6;--muted:#a3a59d;--line:#36372f;
+  --accent:#5cc196;--accent-soft:#1f3a2e;--warn:#f0905a;--warn-soft:#3d2719;--mid:#e0b552;--mid-soft:#3a3020}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans TC",system-ui,sans-serif;font-size:15px;line-height:1.5}
+.wrap{max-width:980px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:22px;margin:0 0 4px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:14px}
+.card h2{font-size:16px;margin:0 0 12px;display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+label.f{display:flex;flex-direction:column;font-size:12px;color:var(--muted);gap:3px}
+label.c{display:flex;align-items:center;gap:5px;font-size:13px;color:var(--ink)}
+input,select,button{font:inherit;color:inherit}
+input,select{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 8px;min-width:0}
+input[type=number]{width:90px}
+button{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.ghost{border:none;background:none;color:var(--muted);padding:4px 6px}
+button.ghost:hover{color:var(--warn)}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat{background:var(--bg);border-radius:10px;padding:12px}
+.stat .k{font-size:12px;color:var(--muted)}
+.stat .v{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
+.stat .v small{font-size:13px;font-weight:400;color:var(--muted)}
+.bar{height:6px;background:var(--line);border-radius:3px;margin-top:8px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:3px;transition:width .2s}
+.bar i.over{background:var(--warn)}
+.note{font-size:12px;color:var(--muted);margin-top:6px}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:6px 6px;border-bottom:1px solid var(--line);text-align:left;font-size:14px;vertical-align:middle}
+th{font-size:12px;color:var(--muted);font-weight:500}
+td.n,th.n{text-align:right}
+tfoot td{font-weight:700;border-bottom:none}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px}
+.addbar{display:grid;grid-template-columns:1fr 100px 96px auto;gap:8px;margin-top:10px}
+.hint{font-size:12px;color:var(--accent);background:var(--accent-soft);border-radius:8px;padding:6px 10px;margin-top:8px;display:none}
+.mealbadge{font-size:12px;color:var(--muted);font-weight:400}
+details summary{cursor:pointer;font-weight:700;font-size:16px}
+.dbtable input{width:64px;padding:4px 6px}
+.dbtable input.name{width:150px}
+.dbtable select{padding:4px}
+.dbtable tr.cathead td{background:var(--bg);font-weight:700;font-size:13px}
+.scroll{overflow-x:auto}
+.plate{display:flex;height:12px;border-radius:6px;overflow:hidden;margin-top:8px;background:var(--line)}
+.plate span{display:block;height:100%}
+.legend{display:flex;gap:12px;font-size:12px;color:var(--muted);margin-top:4px;flex-wrap:wrap}
+.legend b{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:20px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+.hist td{font-size:13px}
+/* satiety */
+.sat{margin-top:12px;border-radius:10px;padding:12px;background:var(--bg)}
+.sat .top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.sat .score{font-size:28px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+.sat .verdict{font-weight:700;padding:2px 10px;border-radius:12px;font-size:13px}
+.v-good{background:var(--accent-soft);color:var(--accent)}
+.v-mid{background:var(--mid-soft);color:var(--mid)}
+.v-bad{background:var(--warn-soft);color:var(--warn)}
+.parts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+.parts .k{font-size:12px;color:var(--muted)}
+.parts .bar{margin-top:4px}
+.tips{margin:10px 0 0;padding-left:18px;font-size:13px}
+.tips li{margin:2px 0}
+/* optimizer */
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chip{font-size:12px;padding:3px 10px;border-radius:14px;border:1px solid var(--line);background:var(--bg);cursor:pointer;user-select:none}
+.chip.off{text-decoration:line-through;opacity:.45}
+.chipgroup{margin-top:8px}
+.chipgroup .lab{font-size:12px;color:var(--muted)}
+.opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-top:12px}
+.opt{border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--bg)}
+.opt.best{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.opt h3{margin:0 0 6px;font-size:14px;display:flex;justify-content:space-between;align-items:center}
+.opt ul{margin:0 0 8px;padding:0;list-style:none;font-size:13px}
+.opt li{display:flex;justify-content:space-between;gap:8px;padding:2px 0}
+.opt .tot{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.opt .btns{display:flex;gap:6px;margin-top:8px}
+.opt .btns button{flex:1;font-size:13px;padding:5px}
+@media (max-width:640px){
+  .summary{grid-template-columns:1fr}
+  .addbar{grid-template-columns:1fr 1fr}
+  .addbar select.pick{grid-column:1/-1}
+  .hide-sm{display:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>每日午晚餐計算機</h1>
+  <p class="sub">價錢・熱量・蛋白質・飽足感一次算。食材依營養師 Tracy 的〈好市多減脂採買清單〉分成澱粉主食、蛋白質主菜、蔬菜配菜，另有乳品飲品、油脂醬料；價格取自 <b>2026/11/11 好市多線上購物（含運，門市通常較便宜）與全聯小時達（店內價）</b>的標價，換算成每 100g；有特價時取原價。</p>
+
+  <div class="card">
+    <h2>今日總計 <span class="row"><label class="f">日期<input type="date" id="date"></label></span></h2>
+    <div class="summary">
+      <div class="stat"><div class="k">價錢</div><div class="v" id="sPrice">0 <small>元</small></div>
+        <div class="bar"><i id="bPrice"></i></div><div class="note" id="nPrice"></div></div>
+      <div class="stat"><div class="k">熱量</div><div class="v" id="sKcal">0 <small>kcal</small></div>
+        <div class="bar"><i id="bKcal"></i></div><div class="note" id="nKcal"></div></div>
+      <div class="stat"><div class="k">蛋白質</div><div class="v" id="sProt">0 <small>g</small></div>
+        <div class="bar"><i id="bProt"></i></div><div class="note" id="nProt"></div></div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <label class="f">午＋晚餐熱量目標 (kcal)<input type="number" id="tKcal" min="0"></label>
+      <label class="f">午＋晚餐蛋白質目標 (g)<input type="number" id="tProt" min="0"></label>
+      <label class="f">預算 (元)<input type="number" id="tPrice" min="0"></label>
+      <span style="flex:1"></span>
+      <button id="saveDay" class="primary">存入紀錄</button>
+      <button id="clearDay">清空今天</button>
+    </div>
+  </div>
+
+  <div class="card" id="optCard">
+    <h2>幫我配一餐 <span class="mealbadge">在熱量、預算、蛋白質限制下，找最飽、再挑最省的組合</span></h2>
+    <div class="row">
+      <label class="f">這餐熱量上限 (kcal)<input type="number" id="oK"></label>
+      <label class="f">蛋白質至少 (g)<input type="number" id="oP"></label>
+      <label class="f">預算上限 (元)<input type="number" id="oB"></label>
+      <label class="f">去哪買<select id="oStore"><option value="min">哪家便宜選哪家</option><option value="costco">只買好市多</option><option value="px">只買全聯</option></select></label>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <label class="c"><input type="checkbox" id="oVeg" checked>蔬菜量 ≥ 澱粉量（Tracy 原則）</label>
+      <label class="c"><input type="checkbox" id="oOil" checked>算進 5ml 烹調油</label>
+      <label class="c"><input type="checkbox" id="oNoStarch">允許不吃澱粉</label>
+    </div>
+    <div id="chips"></div>
+    <div class="row" style="margin-top:12px"><button class="primary" id="runOpt">幫我配</button><span class="note" id="optMsg" style="margin:0"></span></div>
+    <div class="opts" id="opts"></div>
+  </div>
+
+  <div id="meals"></div>
+
+  <div class="card">
+    <h2>歷史紀錄 <span class="mealbadge">存在這台裝置的瀏覽器</span></h2>
+    <div class="scroll"><table class="hist">
+      <thead><tr><th>日期</th><th class="n">價錢</th><th class="n">熱量</th><th class="n">蛋白質</th><th class="n">元/10g蛋白</th><th></th></tr></thead>
+      <tbody id="histBody"></tbody>
+    </table></div>
+    <div class="note" id="histAvg"></div>
+  </div>
+
+  <div class="card">
+    <details id="dbDetails">
+      <summary>食材資料庫（可修改價格、新增自己常買的）</summary>
+      <p class="note">營養數值依食物代換表與常見營養成分概算；<b>價格＝標價 ÷ 包裝重量，換算成每 100g（或 100ml、每顆）</b>，兩家各用哪個商品寫在每列下方。好市多用線上購物價（含運），全聯用小時達店內價，有特價時取原價。你可以照實際買到的價格改，改完會自動記住。「—」代表那家查不到。「100kcal 可吃」越大，同樣熱量吃起來越有份量。</p>
+      <div class="scroll"><table class="dbtable">
+        <thead><tr><th>名稱</th><th>分類</th><th>單位</th><th class="n">kcal</th><th class="n">蛋白質g</th><th class="n">纖維g</th><th class="n">每單位g</th><th class="n">好市多 元</th><th class="n">全聯 元</th><th class="n">100kcal 可吃</th><th class="hide-sm">份量提示</th><th></th></tr></thead>
+        <tbody id="dbBody"></tbody>
+      </table></div>
+      <div class="row" style="margin-top:10px">
+        <button id="addFood">＋ 新增食材</button>
+        <button id="resetDb">恢復預設資料庫</button>
+      </div>
+    </details>
+  </div>
+  <p class="note"><b>飽足感怎麼算：</b>每餐看三件事：吃下去的總重量（目標約 450g，份量大比較飽）、蛋白質（目標＝每日蛋白質目標的一半）、膳食纖維（目標 8g）。三項各佔 40%／35%／25%，加起來 80 分以上算「應該會飽」。這是依「低熱量密度、高蛋白、高纖比較有飽足感」的原則做的簡化估算，每個人感受不同，可以照自己吃完的感覺調整份量。本工具僅供估算，不是醫療建議。</p>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// 價格：好市多線上購物、全聯小時達（店內價）2026/11/11 查詢之標價換算；有特價時取原價
+const DEFAULT_DB = [
+  // 澱粉主食
+  {id:'pumpkin',name:'南瓜（生）',cat:'澱粉主食',unit:'g',kcal:82,prot:2.4,fib:2.5,costco:10.5,px:10.6,def:170,tip:'85g 生重 = 1 份澱粉',src:'好市多：玉美 東昇南瓜 10公斤 $1,049｜全聯：南瓜 800g $85（皆整顆含皮籽）'},
+  {id:'grain',name:'六穀米飯（熟）',cat:'澱粉主食',unit:'g',kcal:170,prot:4,fib:1.8,costco:7.4,px:null,def:160,tip:'建議混入白米一起煮',src:'好市多：一芯一粒 六穀米 2公斤×2 $655（生米以熟重 ×2.2 換算）｜全聯：查無'},
+  {id:'rice',name:'白飯（熟）',cat:'澱粉主食',unit:'g',kcal:183,prot:3.1,fib:0.6,costco:2.9,px:3.6,def:160,tip:'1 碗約 160g = 4 份澱粉',src:'好市多：台梗九號米 9公斤 $579｜全聯：三好米星川米 1.5kg $119（生米以熟重 ×2.2 換算）'},
+  {id:'sweetpotato',name:'冰烤地瓜（即食）',cat:'澱粉主食',unit:'g',kcal:127,prot:3.6,fib:3,costco:17.2,px:18.8,def:110,tip:'55g = 1 份；減脂期建議 110–165g',src:'好市多：亞細亞田園 冷凍冰烤地瓜 2.2公斤 $379｜全聯：阿甘薯叔冰烤地瓜 600g $113'},
+  {id:'oat',name:'燕麥片（乾）',cat:'澱粉主食',unit:'g',kcal:389,prot:13,fib:10,costco:23.5,px:17.5,def:40,tip:'20g = 1 份澱粉；泡開後體積變大',src:'好市多：桂格 有機大燕麥片 935公克×2 $439｜全聯：桂格即沖即食大燕麥片 1250g $219'},
+  // 蛋白質主菜
+  {id:'seabass',name:'鱸魚排（生）',cat:'蛋白質主菜',unit:'g',kcal:105,prot:19,fib:0,costco:50.9,px:48.7,def:160,tip:'35g = 1 份；一片 150–170g 約一餐所需',src:'好市多：東晟 冷凍金目鱸魚排 1公斤 $509｜全聯：金目鱸魚排 450g $219'},
+  {id:'shrimp',name:'蝦仁（生）',cat:'蛋白質主菜',unit:'g',kcal:80,prot:18,fib:0,costco:56.8,px:45.4,def:105,tip:'35g = 1 份（約 3 隻大蝦）',src:'好市多：科克蘭 冷凍去殼去尾大生蝦仁 907公克 $515｜全聯：嚴選鮮凍白蝦仁 350g $159'},
+  {id:'chicken',name:'雞胸肉（生）',cat:'蛋白質主菜',unit:'g',kcal:104,prot:22.4,fib:0,costco:23.6,px:30.0,def:120,tip:'30g = 1 份；一餐 100–150g',src:'好市多：大成 台灣冷凍雞清胸肉 2.5公斤×2 $1,179｜全聯：雞胸肉（去皮）290g $87'},
+  {id:'chickenRTE',name:'即食雞胸（舒肥／沙拉胸）',cat:'蛋白質主菜',unit:'g',kcal:115,prot:23,fib:0,costco:47.6,px:49.0,def:100,tip:'開袋即食',src:'好市多：大成 冷藏原味嫩雞胸肉 840公克×2 $799｜全聯：輕食沙拉胸 100g $49'},
+  {id:'tofu',name:'板豆腐',cat:'蛋白質主菜',unit:'g',kcal:88,prot:8.5,fib:0.6,costco:null,px:7.3,def:240,tip:'80g = 1 份；一餐 240–400g',src:'全聯：大漢傳統板豆腐 400g $29｜好市多：網站不顯示價格'},
+  {id:'edamame',name:'毛豆莢（帶莢秤）',cat:'蛋白質主菜',unit:'g',kcal:83,prot:7.8,fib:4,costco:14.0,px:16.3,def:180,tip:'90g 帶莢 = 1 份',src:'好市多：亞細亞田園 冷凍薄鹽毛豆莢 500公克×6 $419｜全聯：禎祥冷凍鹽味毛豆 400g $65'},
+  {id:'egg',name:'雞蛋',cat:'蛋白質主菜',unit:'顆',w:60,kcal:80,prot:7.5,fib:0,costco:null,px:9.0,def:2,tip:'1 顆 = 1 份蛋白質',src:'全聯：富翁一級棒紅殼鮮雞蛋 10入 $90｜好市多：網站不顯示價格'},
+  {id:'salmon',name:'鮭魚（生）',cat:'蛋白質主菜',unit:'g',kcal:200,prot:20,fib:0,costco:81.5,px:55.6,def:120,tip:'油脂較高，熱量算進去',src:'好市多：科克蘭 冷凍鮭魚排 1.36公斤 $1,109｜全聯：鮭魚日切 250g $139'},
+  {id:'drumstick',name:'去骨雞腿肉（生）',cat:'蛋白質主菜',unit:'g',kcal:157,prot:18.5,fib:0,costco:27.4,px:36.9,def:120,tip:'去皮後熱量較低',src:'好市多：卜蜂 台灣冷凍去骨清雞腿 2.5公斤×2 $1,369｜全聯：國產去骨雞腿排 540g $199'},
+  {id:'tuna',name:'水煮鮪魚罐頭（瀝乾）',cat:'蛋白質主菜',unit:'g',kcal:110,prot:24,fib:0,costco:59.6,px:45.7,def:100,tip:'以固形量（瀝乾重）計價',src:'好市多：科克蘭 鮪魚罐頭 198公克×8 $729（固形 153g/罐）｜全聯：愛之味水煮鮪魚片 固形140g×3 $192'},
+  // 蔬菜配菜
+  {id:'zucchini',name:'櫛瓜',cat:'蔬菜配菜',unit:'g',kcal:17,prot:1.2,fib:1.2,costco:22.0,px:22.6,def:150,tip:'',src:'好市多：玉美 產銷履歷櫛瓜 5公斤 $1,099｜全聯：櫛瓜 350g $79'},
+  {id:'brussels',name:'球芽甘藍',cat:'蔬菜配菜',unit:'g',kcal:43,prot:3.4,fib:3.8,costco:33.3,px:16.3,def:120,tip:'',src:'好市多：美國球芽甘藍 3公斤 $999｜全聯：Picard甘藍球芽（冷凍）600g $98'},
+  {id:'babycorn',name:'玉米筍',cat:'蔬菜配菜',unit:'g',kcal:31,prot:2,fib:2,costco:14.5,px:43.0,def:100,tip:'',src:'好市多：亞細亞田園 冷凍玉米筍 1公斤×8 $1,159｜全聯：產地嚴選玉米筍 100g $43'},
+  {id:'mushroom',name:'鴻喜菇／雪白菇',cat:'蔬菜配菜',unit:'g',kcal:32,prot:2.6,fib:2.5,costco:25.0,px:18.0,def:100,tip:'',src:'好市多：菇菇好 有機鴻喜菇組合 150公克×20 $749｜全聯：有機鴻禧菇 150g $27'},
+  {id:'salad',name:'生菜（綜合萵苣）',cat:'蔬菜配菜',unit:'g',kcal:15,prot:1.3,fib:1.5,costco:97.4,px:54.2,def:100,tip:'醬選油醋，少凱薩',src:'好市多：源鮮 綜合萵苣盒 200公克×4 $779｜全聯：水耕履歷綜合綠萵苣 120g $65'},
+  {id:'broccoli',name:'青花菜（冷凍）',cat:'蔬菜配菜',unit:'g',kcal:34,prot:2.8,fib:3.1,costco:null,px:16.0,def:150,tip:'',src:'全聯：揚振青花菜 500g $80｜好市多：查無標價'},
+  {id:'cabbage',name:'高麗菜絲',cat:'蔬菜配菜',unit:'g',kcal:23,prot:1.3,fib:1.1,costco:16.0,px:23.3,def:150,tip:'買整顆高麗菜更便宜（全聯 1kg $89）',src:'好市多：玉美 雙色高麗菜絲 500公克×6 $479｜全聯：鮮切高麗菜絲 150g $35'},
+  // 乳品飲品
+  {id:'yogurt',name:'無糖希臘優格',cat:'乳品飲品',unit:'g',kcal:65,prot:9,fib:0,costco:null,px:17.8,def:150,tip:'',src:'全聯：質立希臘式優格-無加糖 500g $89｜好市多：網站不顯示價格'},
+  {id:'soymilk',name:'無糖豆漿',cat:'乳品飲品',unit:'ml',kcal:35,prot:3.6,fib:0.5,costco:null,px:5.4,def:400,tip:'',src:'全聯：光泉豆漿-無加糖 200ml×6 $65｜好市多：網站不顯示價格'},
+  {id:'milk',name:'鮮奶',cat:'乳品飲品',unit:'ml',kcal:63,prot:3.1,fib:0,costco:null,px:9.1,def:240,tip:'240ml = 1 份乳品',src:'全聯：林鳳營高品質鮮乳 1857ml $169｜好市多：網站不顯示價格'},
+  // 油脂醬料
+  {id:'oil',name:'芥花油',cat:'油脂醬料',unit:'ml',kcal:820,prot:0,fib:0,costco:8.6,px:10.0,def:10,tip:'1 茶匙 5ml ≈ 41 kcal',src:'好市多：F.I. 100% 純芥花油 2.6公升×2 $449｜全聯：得意的一天純芥花油 2.4L $239'}
+];
+
+const CATS=['澱粉主食','蛋白質主菜','蔬菜配菜','乳品飲品','油脂醬料','其他'];
+const CAT_COLOR={'澱粉主食':'#d9a441','蛋白質主菜':'#c8553d','蔬菜配菜':'#4f9d69','乳品飲品':'#5b8fc9','油脂醬料':'#8d7fb8','其他':'#999'};
+const OLD_CAT={'澱粉':'澱粉主食','蛋白質':'蛋白質主菜','蔬菜':'蔬菜配菜','油脂調味':'油脂醬料'};
+const MEALS=[{k:'lunch',n:'午餐'},{k:'dinner',n:'晚餐'}];
+const SAT={vol:450,fib:8,wV:.40,wP:.35,wF:.25};
+
+const LS={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},
+          set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+function migrate(stored){
+  if(!stored) return JSON.parse(JSON.stringify(DEFAULT_DB));
+  const byId=Object.fromEntries(DEFAULT_DB.map(f=>[f.id,f]));
+  stored.forEach(f=>{
+    const d=byId[f.id];
+    if(OLD_CAT[f.cat]) f.cat=OLD_CAT[f.cat];
+    if(d){ if(f.fib==null) f.fib=d.fib; if(f.w==null&&d.w) f.w=d.w; if(d.cat==='乳品飲品'&&f.cat==='蛋白質主菜') f.cat=d.cat; }
+    if(f.fib==null) f.fib=0;
+  });
+  DEFAULT_DB.forEach(d=>{ if(!stored.find(f=>f.id===d.id)) stored.push(JSON.parse(JSON.stringify(d))) });
+  return stored;
+}
+let db = LS.get('mc_db_v3', null) || JSON.parse(JSON.stringify(DEFAULT_DB));
+let state = LS.get('mc_state', {lunch:[],dinner:[]});
+['lunch','dinner'].forEach(k=>{state[k]=(state[k]||[]).filter(it=>db.find(f=>f.id===it.id));state[k].forEach(it=>{const f=db.find(x=>x.id===it.id);if(it.store==='px'&&f.px==null)it.store='costco'})});
+let targets = LS.get('mc_targets', {kcal:1200,prot:70,price:200});
+let history = LS.get('mc_hist', []);
+let excluded = new Set(LS.get('mc_excl', []));
+
+const $=s=>document.querySelector(s);
+const fmt=(n,d=0)=>(Math.round(n*10**d)/10**d).toLocaleString('zh-TW',{minimumFractionDigits:d,maximumFractionDigits:d});
+const today=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)};
+const isMass=f=>f.unit==='g'||f.unit==='ml';
+const factor=f=>isMass(f)?1/100:1;
+const gramsOf=(f,amt)=>isMass(f)?amt:amt*(f.w||100);
+const food=id=>db.find(f=>f.id===id);
+const priceOf=(f,store)=>store==='px'?f.px:store==='costco'?f.costco:
+  (f.costco==null?f.px:f.px==null?f.costco:Math.min(f.costco,f.px));
+const cheaperStore=f=>f.costco==null?'px':f.px==null?'costco':(f.px<f.costco?'px':'costco');
+const per100kcal=f=>f.kcal>0?(isMass(f)?100/f.kcal*100:100/f.kcal*(f.w||100)):Infinity;
+const protMeal=()=>Math.max(targets.prot/2,1);
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),1600)}
+const storeName=s=>s==='px'?'全聯':'好市多';
+
+function itemCalc(it){
+  const f=food(it.id);
+  if(!f) return {kcal:0,prot:0,fib:0,g:0,price:0,name:'(已刪除)',f:null};
+  const m=it.amt*factor(f);const up=priceOf(f,it.store);
+  return {kcal:f.kcal*m,prot:f.prot*m,fib:(f.fib||0)*m,g:gramsOf(f,it.amt),price:(up??0)*m,noPrice:up==null,name:f.name,f};
+}
+function totalsOf(items){
+  return items.reduce((a,it)=>{const c=itemCalc(it);a.kcal+=c.kcal;a.prot+=c.prot;a.fib+=c.fib;a.g+=c.g;a.price+=c.price;
+    const cat=c.f?c.f.cat:'其他';a.byCat[cat]=(a.byCat[cat]||0)+c.kcal;a.gCat[cat]=(a.gCat[cat]||0)+c.g;return a},
+    {kcal:0,prot:0,fib:0,g:0,price:0,byCat:{},gCat:{}});
+}
+function satScore(g,p,fib){
+  const v=Math.min(g/SAT.vol,1),pp=Math.min(p/protMeal(),1),ff=Math.min(fib/SAT.fib,1);
+  return {score:Math.floor(100*(SAT.wV*v+SAT.wP*pp+SAT.wF*ff)),v,pp,ff};
+}
+function verdict(s){return s>=80?['應該會飽','v-good']:s>=60?['普通，下午可能會餓','v-mid']:['偏少，容易餓','v-bad']}
+
+function satTips(t){
+  const tips=[];
+  const vegs=db.filter(f=>f.cat==='蔬菜配菜'&&!excluded.has(f.id)&&priceOf(f,'min')!=null);
+  if(t.g<SAT.vol){
+    const need=Math.ceil((SAT.vol-t.g)/50)*50;
+    const v=[...vegs].sort((a,b)=>priceOf(a,'min')-priceOf(b,'min')||a.kcal-b.kcal)[0];
+    if(v) tips.push(`份量偏少（${fmt(t.g)}g）：加 ${need}g ${v.name}，只多約 ${fmt(v.kcal*need/100)} kcal、${fmt(priceOf(v,'min')*need/100)} 元，最便宜的增量方法。`);
+  }
+  if(t.prot<protMeal()){
+    const gap=protMeal()-t.prot;
+    const ps=db.filter(f=>f.cat==='蛋白質主菜'&&!excluded.has(f.id)&&f.prot>0&&isMass(f)).sort((a,b)=>a.kcal/a.prot-b.kcal/b.prot)[0];
+    if(ps){const g=Math.ceil(gap/ps.prot*100/10)*10;tips.push(`蛋白質還差 ${fmt(gap,1)}g：加 ${g}g ${ps.name}（+${fmt(ps.kcal*g/100)} kcal），這是每卡路里蛋白質最高的選項。`)}
+  }
+  if(t.fib<SAT.fib) tips.push(`纖維只有 ${fmt(t.fib,1)}g：澱粉換成地瓜、南瓜或燕麥，或把蔬菜換成球芽甘藍、菇類，纖維會多不少。`);
+  const sg=t.gCat['澱粉主食']||0,vg=t.gCat['蔬菜配菜']||0;
+  if(sg>0&&vg<sg) tips.push(`蔬菜（${fmt(vg)}g）比澱粉（${fmt(sg)}g）少：Tracy 建議蔬菜量至少跟澱粉一樣多。`);
+  if(t.g>0&&t.kcal/t.g>1.6) tips.push(`這餐熱量密度偏高（${fmt(t.kcal/t.g,2)} kcal/g），同樣熱量換成多一點蔬菜、少一點油會更飽。`);
+  return tips;
+}
+
+function foodOptions(sel){
+  return CATS.map(c=>{const fs=db.filter(f=>f.cat===c);if(!fs.length)return'';
+    return `<optgroup label="${c}">${fs.map(f=>`<option value="${f.id}" ${f.id===sel?'selected':''}>${f.name}　·100kcal≈${fmt(per100kcal(f))}g</option>`).join('')}</optgroup>`}).join('');
+}
+
+function renderMeals(){
+  const box=$('#meals');box.innerHTML='';
+  MEALS.forEach(M=>{
+    const items=state[M.k];const t=totalsOf(items);
+    const sorted=items.map((it,i)=>({it,i})).sort((a,b)=>{const fa=food(a.it.id),fb=food(b.it.id);return CATS.indexOf(fa?fa.cat:'其他')-CATS.indexOf(fb?fb.cat:'其他')});
+    const rows=sorted.map(({it,i})=>{
+      const c=itemCalc(it);const f=c.f;const u=f?f.unit:'';
+      const storeSel=f?`<select data-m="${M.k}" data-i="${i}" data-act="store">
+          <option value="costco" ${it.store!=='px'?'selected':''} ${f.costco==null?'disabled':''}>好市多</option>
+          <option value="px" ${it.store==='px'?'selected':''} ${f.px==null?'disabled':''}>全聯</option></select>`:'';
+      return `<tr>
+        <td><span class="dot" style="background:${CAT_COLOR[f?f.cat:'其他']}"></span>${c.name}${f&&f.tip?`<div class="note" style="margin:0 0 0 14px">${f.tip}</div>`:''}</td>
+        <td><input type="number" min="0" step="${isMass(f||{})?10:0.5}" value="${it.amt}" data-m="${M.k}" data-i="${i}" data-act="amt" style="width:72px"> ${u}</td>
+        <td>${storeSel}</td>
+        <td class="n">${c.noPrice?'—':fmt(c.price)}</td>
+        <td class="n">${fmt(c.kcal)}</td>
+        <td class="n">${fmt(c.prot,1)}</td>
+        <td><button class="ghost" data-m="${M.k}" data-i="${i}" data-act="del" title="移除">✕</button></td></tr>`}).join('');
+    const total=t.kcal||1;
+    const plate=CATS.filter(c=>t.byCat[c]).map(c=>`<span style="width:${t.byCat[c]/total*100}%;background:${CAT_COLOR[c]}"></span>`).join('');
+    const legend=CATS.filter(c=>t.byCat[c]).map(c=>`<span><b style="background:${CAT_COLOR[c]}"></b>${c} ${fmt(t.byCat[c]/total*100)}%</span>`).join('');
+    let satHtml='';
+    if(items.length){
+      const s=satScore(t.g,t.prot,t.fib);const [vt,vc]=verdict(s.score);const tips=satTips(t);
+      satHtml=`<div class="sat">
+        <div class="top"><span class="score">${s.score}</span><span class="note" style="margin:0">/ 100 飽足分</span><span class="verdict ${vc}">${vt}</span></div>
+        <div class="parts">
+          <div><div class="k">份量 ${fmt(t.g)} / ${SAT.vol} g</div><div class="bar"><i style="width:${s.v*100}%"></i></div></div>
+          <div><div class="k">蛋白質 ${fmt(t.prot,1)} / ${fmt(protMeal())} g</div><div class="bar"><i style="width:${s.pp*100}%"></i></div></div>
+          <div><div class="k">纖維 ${fmt(t.fib,1)} / ${SAT.fib} g</div><div class="bar"><i style="width:${s.ff*100}%"></i></div></div>
+        </div>
+        ${tips.length?`<ul class="tips">${tips.map(x=>`<li>${x}</li>`).join('')}</ul>`:''}
+      </div>`;
+    }
+    const card=document.createElement('div');card.className='card';
+    card.innerHTML=`
+      <h2>${M.n} <span class="mealbadge">${fmt(t.price)} 元 · ${fmt(t.kcal)} kcal · ${fmt(t.prot,1)} g 蛋白質</span></h2>
+      <div class="scroll"><table>
+        <thead><tr><th>食材</th><th>份量</th><th>買哪</th><th class="n">元</th><th class="n">kcal</th><th class="n">蛋白質 g</th><th></th></tr></thead>
+        <tbody>${rows||`<tr><td colspan="7" class="note">還沒加食材：從下面選，或用上面的「幫我配一餐」</td></tr>`}</tbody>
+        ${items.length?`<tfoot><tr><td colspan="3">小計</td><td class="n">${fmt(t.price)}</td><td class="n">${fmt(t.kcal)}</td><td class="n">${fmt(t.prot,1)}</td><td></td></tr></tfoot>`:''}
+      </table></div>
+      ${items.length?`<div class="plate">${plate}</div><div class="legend">熱量來源：${legend}</div>`:''}
+      ${satHtml}
+      <div class="addbar">
+        <select class="pick" data-m="${M.k}" data-act="pick"><option value="">選擇食材…</option>${foodOptions()}</select>
+        <input type="number" min="0" placeholder="份量" data-m="${M.k}" data-act="pickAmt">
+        <select data-m="${M.k}" data-act="pickStore"><option value="costco">好市多</option><option value="px">全聯</option></select>
+        <button class="primary" data-m="${M.k}" data-act="add">加入</button>
+      </div>
+      <div class="hint" data-m="${M.k}" data-act="hint"></div>`;
+    box.appendChild(card);
+  });
+  renderSummary();
+}
+function dayTotals(){const a=totalsOf(state.lunch),b=totalsOf(state.dinner);return{kcal:a.kcal+b.kcal,prot:a.prot+b.prot,price:a.price+b.price}}
+function setBar(id,v,t,goodWhenOver){const el=$(id);const p=t>0?Math.min(v/t*100,100):0;el.style.width=p+'%';el.classList.toggle('over',!goodWhenOver&&t>0&&v>t)}
+function renderSummary(){
+  const d=dayTotals();
+  $('#sPrice').innerHTML=`${fmt(d.price)} <small>元</small>`;
+  $('#sKcal').innerHTML=`${fmt(d.kcal)} <small>kcal</small>`;
+  $('#sProt').innerHTML=`${fmt(d.prot,1)} <small>g</small>`;
+  setBar('#bPrice',d.price,targets.price,false);setBar('#bKcal',d.kcal,targets.kcal,false);setBar('#bProt',d.prot,targets.prot,true);
+  const diff=(v,t,u)=>t?(v<=t?`還剩 ${fmt(t-v)} ${u}`:`超過 ${fmt(v-t)} ${u}`):'';
+  $('#nPrice').textContent=diff(d.price,targets.price,'元');
+  $('#nKcal').textContent=diff(d.kcal,targets.kcal,'kcal');
+  $('#nProt').textContent=targets.prot?(d.prot>=targets.prot?`已達標 ✓（+${fmt(d.prot-targets.prot,1)} g）`:`還差 ${fmt(targets.prot-d.prot,1)} g`):'';
+}
+function renderDb(){
+  let html='';
+  CATS.forEach(c=>{
+    const list=db.map((f,i)=>({f,i})).filter(x=>x.f.cat===c);if(!list.length)return;
+    html+=`<tr class="cathead"><td colspan="12"><span class="dot" style="background:${CAT_COLOR[c]}"></span>${c}</td></tr>`;
+    html+=list.map(({f,i})=>`<tr>
+      <td><input class="name" value="${f.name}" data-i="${i}" data-k="name"></td>
+      <td><select data-i="${i}" data-k="cat">${CATS.map(x=>`<option ${x===f.cat?'selected':''}>${x}</option>`).join('')}</select></td>
+      <td><select data-i="${i}" data-k="unit">${['g','ml','個','顆','根','包','片'].map(u=>`<option ${u===f.unit?'selected':''}>${u}</option>`).join('')}</select></td>
+      <td class="n"><input type="number" step="any" value="${f.kcal}" data-i="${i}" data-k="kcal"></td>
+      <td class="n"><input type="number" step="any" value="${f.prot}" data-i="${i}" data-k="prot"></td>
+      <td class="n"><input type="number" step="any" value="${f.fib??0}" data-i="${i}" data-k="fib"></td>
+      <td class="n">${isMass(f)?'<span class="note">—</span>':`<input type="number" step="any" value="${f.w??100}" data-i="${i}" data-k="w">`}</td>
+      <td class="n"><input type="number" step="any" value="${f.costco??''}" placeholder="—" data-i="${i}" data-k="costco"></td>
+      <td class="n"><input type="number" step="any" value="${f.px??''}" placeholder="—" data-i="${i}" data-k="px"></td>
+      <td class="n">${per100kcal(f)===Infinity?'—':fmt(per100kcal(f))+' g'}</td>
+      <td class="hide-sm"><input value="${f.tip||''}" data-i="${i}" data-k="tip" style="width:170px">${f.src?`<div class="note" style="margin:2px 0 0">價格來源：${f.src}</div>`:''}</td>
+      <td><button class="ghost" data-del="${i}" title="刪除">✕</button></td></tr>`).join('');
+  });
+  $('#dbBody').innerHTML=html;
+}
+function renderHist(){
+  const b=$('#histBody');
+  if(!history.length){b.innerHTML=`<tr><td colspan="6" class="note">按「存入紀錄」就會出現在這裡</td></tr>`;$('#histAvg').textContent='';return}
+  const h=[...history].sort((a,b)=>b.date.localeCompare(a.date));
+  b.innerHTML=h.map(r=>`<tr><td>${r.date}</td><td class="n">${fmt(r.price)}</td><td class="n">${fmt(r.kcal)}</td><td class="n">${fmt(r.prot,1)}</td><td class="n">${r.prot?fmt(r.price/r.prot*10,1):'—'}</td>
+    <td><button class="ghost" data-load="${r.date}">載入</button><button class="ghost" data-hdel="${r.date}">✕</button></td></tr>`).join('');
+  const last=h.slice(0,7);const avg=k=>last.reduce((s,r)=>s+r[k],0)/last.length;
+  $('#histAvg').textContent=`近 ${last.length} 筆平均：${fmt(avg('price'))} 元 · ${fmt(avg('kcal'))} kcal · ${fmt(avg('prot'),1)} g 蛋白質`;
+}
+function renderChips(){
+  const groups=['澱粉主食','蛋白質主菜','蔬菜配菜'];
+  $('#chips').innerHTML=`<div class="note">點掉不想吃或家裡沒有的食材：</div>`+groups.map(c=>`<div class="chipgroup"><span class="lab"><span class="dot" style="background:${CAT_COLOR[c]}"></span>${c}</span>
+    <div class="chips">${db.filter(f=>f.cat===c).map(f=>`<span class="chip ${excluded.has(f.id)?'off':''}" data-chip="${f.id}">${f.name}</span>`).join('')}</div></div>`).join('');
+}
+function save(){LS.set('mc_state',state);LS.set('mc_db_v3',db);LS.set('mc_targets',targets);LS.set('mc_hist',history);LS.set('mc_excl',[...excluded])}
+
+// ---------- optimizer ----------
+function amountChoices(f,role){
+  if(!isMass(f)){
+    if(f.id==='egg') return [2,3,4];
+    if(role==='protein') return [1,2];
+    return [1];
+  }
+  const mult=role==='veg'?null:role==='starch'?[0.5,0.75,1,1.5]:[0.75,1,1.25,1.5];
+  if(role==='veg') return [100,150,200];
+  return [...new Set(mult.map(m=>Math.max(10,Math.round(f.def*m/10)*10)))];
+}
+function buildOpts(cat,role,store){
+  const out=[];
+  db.filter(f=>f.cat===cat&&!excluded.has(f.id)&&priceOf(f,store)!=null).forEach(f=>{
+    amountChoices(f,role).forEach(a=>{const m=a*factor(f);const st=store==='min'?cheaperStore(f):store;
+      out.push({id:f.id,amt:a,store:st,kcal:f.kcal*m,prot:f.prot*m,fib:(f.fib||0)*m,g:gramsOf(f,a),price:priceOf(f,st)*m,pid:f.id})});
+  });
+  return out;
+}
+function runOptimizer(){
+  const maxK=+$('#oK').value||0,minP=+$('#oP').value||0,maxB=+$('#oB').value||Infinity,store=$('#oStore').value;
+  const vegRule=$('#oVeg').checked,useOil=$('#oOil').checked,noStarch=$('#oNoStarch').checked;
+  const S=buildOpts('澱粉主食','starch',store),P=buildOpts('蛋白質主菜','protein',store),Vs=buildOpts('蔬菜配菜','veg',store);
+  if(noStarch) S.push(null);
+  if(!P.length||!Vs.length||(!S.length)){ $('#opts').innerHTML='';$('#optMsg').textContent='可選的食材太少，請少點掉一些。';return }
+  // veg pairs (two different veggies)
+  const V=[];for(let i=0;i<Vs.length;i++)for(let j=i+1;j<Vs.length;j++)if(Vs[i].id!==Vs[j].id)V.push([Vs[i],Vs[j]]);
+  const oilF=food('oil');let oil=null;
+  if(useOil&&oilF){const st=store==='min'?cheaperStore(oilF):store;const pr=priceOf(oilF,st);oil={id:'oil',amt:5,store:st,kcal:oilF.kcal*.05,prot:0,fib:0,g:5,price:(pr??0)*.05}}
+  const pm=protMeal();const best={};let count=0;
+  const base=oil||{kcal:0,prot:0,fib:0,g:0,price:0};
+  for(const s of S){
+    const s0=s||{kcal:0,prot:0,fib:0,g:0,price:0};
+    const k1=base.kcal+s0.kcal,p1=base.prot+s0.prot,f1=base.fib+s0.fib,g1=base.g+s0.g,c1=base.price+s0.price;
+    if(k1>maxK||c1>maxB) continue;
+    for(const p of P){
+      const k2=k1+p.kcal,c2=c1+p.price;if(k2>maxK||c2>maxB)continue;
+      const p2=p1+p.prot,f2=f1+p.fib,g2=g1+p.g;
+      for(const [v1,v2] of V){
+        const k=k2+v1.kcal+v2.kcal;if(k>maxK)continue;
+        const c=c2+v1.price+v2.price;if(c>maxB)continue;
+        const pr=p2+v1.prot+v2.prot;if(pr<minP)continue;
+        if(vegRule&&v1.g+v2.g<s0.g)continue;
+        const fb=f2+v1.fib+v2.fib,g=g2+v1.g+v2.g;
+        const sc=100*(SAT.wV*Math.min(g/SAT.vol,1)+SAT.wP*Math.min(pr/pm,1)+SAT.wF*Math.min(fb/SAT.fib,1));
+        count++;
+        const key=p.pid+'|'+(s?s.pid:'none');const cur=best[key];
+        // 先比飽足分（取整數），同分比便宜，再比熱量低
+        const r=Math.floor(sc);
+        if(!cur||r>cur.r||(r===cur.r&&(c<cur.c-0.5||(Math.abs(c-cur.c)<=0.5&&k<cur.k))))
+          best[key]={r,c,k,pr,fb,g,sid:s?s.pid:'none',pid:p.pid,items:[s,p,v1,v2,oil].filter(Boolean)};
+      }
+    }
+  }
+  const all=Object.values(best).sort((a,b)=>b.r-a.r||a.c-b.c||a.k-b.k);
+  // 挑出多樣的方案：主菜不重複，同一種澱粉最多出現 2 次
+  const list=[],usedP=new Set(),usedS={};
+  for(const o of all){if(list.length>=6)break;if(usedP.has(o.pid)||(usedS[o.sid]||0)>=2)continue;list.push(o);usedP.add(o.pid);usedS[o.sid]=(usedS[o.sid]||0)+1}
+  window._opts=list;
+  if(!list.length){$('#opts').innerHTML='';$('#optMsg').textContent='找不到符合條件的組合：試著提高熱量上限或預算，或降低蛋白質要求。';return}
+  $('#optMsg').textContent=`比較了 ${count.toLocaleString()} 種組合，以下是主菜和澱粉都不重複的最佳方案（同分時選最便宜）：`;
+  $('#opts').innerHTML=list.map((o,idx)=>{
+    const [vt,vc]=verdict(o.r);
+    return `<div class="opt ${idx===0?'best':''}">
+      <h3><span>${idx===0?'⭐ 最推薦':'方案 '+(idx+1)}</span><span class="verdict ${vc}">${o.r} 分 · ${vt}</span></h3>
+      <ul>${o.items.map(it=>{const f=food(it.id);return `<li><span><span class="dot" style="background:${CAT_COLOR[f.cat]}"></span>${f.name}</span><span>${fmt(it.amt)}${f.unit} · ${storeName(it.store)}</span></li>`}).join('')}</ul>
+      <div class="tot">${fmt(o.c)} 元 · ${fmt(o.k)} kcal · 蛋白質 ${fmt(o.pr,1)}g · 纖維 ${fmt(o.fb,1)}g · 共 ${fmt(o.g)}g</div>
+      <div class="btns"><button data-apply="${idx}" data-to="lunch">放進午餐</button><button data-apply="${idx}" data-to="dinner">放進晚餐</button></div>
+    </div>`}).join('');
+}
+function syncOptDefaults(force){
+  if(force||!$('#oK').value) $('#oK').value=Math.round(targets.kcal/2);
+  if(force||!$('#oP').value) $('#oP').value=Math.round(targets.prot/2);
+  if(force||!$('#oB').value) $('#oB').value=Math.round(targets.price/2);
+}
+
+// ---------- events ----------
+document.addEventListener('input',e=>{
+  const t=e.target,a=t.dataset.act;
+  if(a==='amt'){state[t.dataset.m][+t.dataset.i].amt=parseFloat(t.value)||0;save();renderMealsKeepFocus(t);return}
+  if(t.dataset.k!==undefined){
+    const f=db[+t.dataset.i],k=t.dataset.k;
+    if(['kcal','prot','fib','w'].includes(k))f[k]=parseFloat(t.value)||0;
+    else if(['costco','px'].includes(k))f[k]=t.value===''?null:parseFloat(t.value);
+    else f[k]=t.value;
+    save();renderMeals();
+  }
+  if(['tKcal','tProt','tPrice'].includes(t.id)){
+    targets={kcal:+$('#tKcal').value||0,prot:+$('#tProt').value||0,price:+$('#tPrice').value||0};save();renderMeals();syncOptDefaults(true);
+  }
+});
+document.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.dataset.act==='store'){state[t.dataset.m][+t.dataset.i].store=t.value;save();renderMeals()}
+  if(t.dataset.act==='pick'){
+    const f=food(t.value);const card=t.closest('.card');
+    const amt=card.querySelector('[data-act=pickAmt]'),st=card.querySelector('[data-act=pickStore]'),hint=card.querySelector('[data-act=hint]');
+    if(f){amt.value=f.def;amt.placeholder=f.unit;
+      st.querySelector('[value=costco]').disabled=f.costco==null;st.querySelector('[value=px]').disabled=f.px==null;
+      st.value=cheaperStore(f);
+      hint.style.display='block';hint.textContent=`💡 ${f.tip?f.tip+'｜':''}100 kcal 可以吃約 ${fmt(per100kcal(f))}g（預設 ${f.def}${f.unit}）`}
+    else hint.style.display='none';
+  }
+  if(t.dataset.k==='cat'||t.dataset.k==='unit'){renderDb();renderMeals();renderChips()}
+});
+document.addEventListener('click',e=>{
+  const chip=e.target.closest('[data-chip]');
+  if(chip){const id=chip.dataset.chip;excluded.has(id)?excluded.delete(id):excluded.add(id);chip.classList.toggle('off');save();return}
+  const t=e.target.closest('button');if(!t)return;
+  const a=t.dataset.act;
+  if(a==='add'){
+    const card=t.closest('.card');const f=food(card.querySelector('[data-act=pick]').value);
+    if(!f){toast('請先選一個食材');return}
+    const amt=parseFloat(card.querySelector('[data-act=pickAmt]').value)||f.def;
+    let store=card.querySelector('[data-act=pickStore]').value;
+    if(store==='px'&&f.px==null)store='costco';if(store==='costco'&&f.costco==null)store='px';
+    state[t.dataset.m].push({id:f.id,amt,store});save();renderMeals();
+  }
+  if(a==='del'){state[t.dataset.m].splice(+t.dataset.i,1);save();renderMeals()}
+  if(t.id==='runOpt'){runOptimizer()}
+  if(t.dataset.apply!==undefined){
+    const o=window._opts[+t.dataset.apply];const to=t.dataset.to;
+    state[to]=o.items.map(it=>({id:it.id,amt:it.amt,store:it.store}));save();renderMeals();
+    toast(`已放進${to==='lunch'?'午餐':'晚餐'}`);
+    const mc=document.querySelectorAll('#meals .card')[to==='lunch'?0:1];mc&&mc.scrollIntoView&&mc.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+  if(t.id==='clearDay'){state={lunch:[],dinner:[]};save();renderMeals();toast('已清空')}
+  if(t.id==='saveDay'){
+    const d=dayTotals(),date=$('#date').value||today();
+    history=history.filter(r=>r.date!==date);
+    history.push({date,...d,meals:JSON.parse(JSON.stringify(state))});save();renderHist();toast(`已存入 ${date}`)}
+  if(t.dataset.load){const r=history.find(x=>x.date===t.dataset.load);if(r&&r.meals){state=JSON.parse(JSON.stringify(r.meals));$('#date').value=r.date;save();renderMeals();toast(`已載入 ${r.date}`);window.scrollTo({top:0,behavior:'smooth'})}}
+  if(t.dataset.hdel){history=history.filter(r=>r.date!==t.dataset.hdel);save();renderHist()}
+  if(t.id==='addFood'){
+    const id='u'+Date.now();db.push({id,name:'新食材',cat:'其他',unit:'g',kcal:0,prot:0,fib:0,costco:null,px:null,def:100,tip:''});
+    save();renderDb();renderMeals();const ins=$('#dbBody').querySelectorAll('input.name');ins[ins.length-1].select()}
+  if(t.dataset.del!==undefined){
+    const f=db[+t.dataset.del];
+    if([...state.lunch,...state.dinner].some(it=>it.id===f.id)){toast('今天的餐點有用到這個食材，先移除再刪');return}
+    db.splice(+t.dataset.del,1);save();renderDb();renderMeals();renderChips()}
+  if(t.id==='resetDb'){
+    if(t.dataset.confirm!=='1'){t.dataset.confirm='1';t.textContent='再按一次確認恢復';setTimeout(()=>{t.dataset.confirm='';t.textContent='恢復預設資料庫'},3000);return}
+    db=JSON.parse(JSON.stringify(DEFAULT_DB));
+    ['lunch','dinner'].forEach(k=>state[k]=state[k].filter(it=>food(it.id)));
+    save();renderDb();renderMeals();renderChips();t.dataset.confirm='';t.textContent='恢復預設資料庫';toast('已恢復預設')}
+});
+function renderMealsKeepFocus(el){
+  const m=el.dataset.m,i=el.dataset.i,pos=el.selectionStart;
+  renderMeals();
+  const n=document.querySelector(`[data-m="${m}"][data-i="${i}"][data-act=amt]`);
+  if(n){n.focus();try{n.setSelectionRange(pos,pos)}catch(e){}}
+}
+
+// init
+$('#date').value=today();
+$('#tKcal').value=targets.kcal;$('#tProt').value=targets.prot;$('#tPrice').value=targets.price;
+syncOptDefaults(true);
+renderChips();renderMeals();renderDb();renderHist();
+</script>
+</body>
+</html>
